@@ -1,141 +1,182 @@
+import html
+import io
+from pathlib import Path
+from typing import Optional, Union
+
+import pandas as pd
+import pendulum
 import prefect
 from prefect import Flow, task
 from prefect.core.parameter import Parameter
+from prefect.engine.results import S3Result
+from prefect.engine.serializers import PickleSerializer
+from prefect.engine.state import Success
 from prefect.environments.storage import Docker
-
-from prefect.engine.result.base import Result
-
-#from prefect.tasks.secrets import PrefectSecret, EnvVarSecret
 from prefect.run_configs import UniversalRun
-from prefect.engine.results import PrefectResult, S3Result
-from prefect.engine.serializers import PandasSerializer
-
+from prefect.tasks.aws.s3 import S3Upload
 from prefect.tasks.great_expectations.checkpoints import RunGreatExpectationsValidation
+from prefect.tasks.notifications.email_task import EmailTask
 
-import pandas as pd
-
-from pathlib import Path
-import os
-
-import pendulum
-import great_expectations as ge
-from src.general import *
+from src.helpers import s3_kwargs
 
 
-# Define checkpoint task
-validation_task = RunGreatExpectationsValidation()
-
-# Task for retrieving batch kwargs including csv dataset
-@task(log_stdout=True, result=Result(serializer=PandasSerializer('csv')))
-def get_batch_kwargs(datasource_name, dataset):
-    logger = prefect.context.get("logger")
-    dataset = ge.read_csv(Path('/home/data') / dataset)
-    logger.info(f"CURRENT WD: {[str(x) for x in Path('/home/data').iterdir()]}")
-
-    logger.info(f'XXX { {"dataset": dataset, "datasource": datasource_name} }')
-
-    return {"dataset": dataset, "datasource": datasource_name}
+# TODO: match this with GE parsing
+def parse_dat_file(target: Union[Path, str], header: Union[Path, str]) -> pd.DataFrame:
+    """Parse .dat data file using header file for colnames"""
+    colnames = pd.read_csv(header).columns.values
+    return pd.read_csv(target, names=colnames, parse_dates=True)
 
 
+upload_to_s3 = S3Upload(boto_kwargs=s3_kwargs)
 
-def create_filename(sitename, date):
+
+def email_on_failure(task, old_state, new_state):
+    """Send email on FAIL state"""
+    if new_state.is_failed():
+        notification_email = "freizeitbeauftragter@gmail.com"
+        # prefect.context.parameters.get("notification_email")
+        flow_name = prefect.context.flow_name
+
+        # TODO: Check how to create a custom prefect email
+        task = EmailTask(
+            subject="Prefect alert: {} {}".format(flow_name, new_state),
+            msg=html.escape(
+                "{} GreatExpectation Validation failed\n\nTask: {}; New State: {}".format(
+                    flow_name, task, new_state
+                )
+            ),
+            email_from="christian.werner@kit.edu",
+            email_to=notification_email,
+            smtp_server="smtp.kit.edu",
+            smtp_port=25,
+            smtp_type="STARTTLS",
+        ).run()
+
+
+def flip_fail_to_success(task, old_state, new_state):
+    """A cheaky state_handler that flips a fail outcome to success"""
+    if new_state.is_failed():
+        return_state = Success(result=new_state.result)
+    else:
+        return_state = new_state
+    return return_state
+
+
+def create_filename(sitename: str, date: str) -> str:
+    """Create filename from site and date"""
     assert 2010 < date.year, "jday must be in range >= 2010"
-    
+
     sitename_short = sitename.capitalize()[:3]
     year_short = str(date.year)[2:4]
     jday = date.timetuple().tm_yday
-
     return f"{sitename_short}_M_{year_short}_{jday}.dat"
 
 
-@task(log_stdout=True, result=Result(serializer=PandasSerializer('csv')))
-def pull_rawfile(datalocation, sitename, current_time, offset):
-    logger = prefect.context.get("logger")
+# Define checkpoint task
+validation_task = RunGreatExpectationsValidation(
+    state_handlers=[email_on_failure, flip_fail_to_success]
+)
 
-    current_time = current_time or pendulum.now("utc") # uses "now" if not provided
+
+@task
+def get_batch_kwargs(datasource_name, dataset):
+    """Retrieve batch kwargs including csv dataset"""
+    dataset = pd.read_csv(Path("/home/data") / dataset)
+    return {"dataset": dataset, "datasource": datasource_name}
+
+
+@task(log_stdout=True)
+def retrieve_and_parse_target_file(
+    location: str, site: str, current_time: Optional[str], offset: int = 0
+):
+    """Retrieve and parse target file"""
+    current_time = current_time or pendulum.now("utc")
     if isinstance(current_time, str):
         current_time = pendulum.parse(current_time)
 
-    logger.info(f"time 1: {current_time}")
+    target_date = current_time.subtract(days=offset)
 
-    previous_time = current_time.subtract(days=offset)
+    filename = create_filename(site, target_date)
 
-    logger.info(f"time 2: {previous_time}")
+    basepath = Path(location) / site / "micromet" / "raw" / "slow_response"
+    target = basepath / str(target_date.year) / filename
 
+    site_short = site.capitalize()[:3]
+    header = basepath / f"{site_short}_M_header.csv"
 
-    sitename_short = sitename_short = sitename.capitalize()[:3]
-    filename = create_filename(sitename, previous_time)
-
-    logger.info(f"Looking for file '{filename}' on server")
-
-    basepath = Path(f"{datalocation}/{sitename}/micromet/raw/slow_response")
-    target = basepath / str(previous_time.year) / filename
-    header = basepath / f"{sitename_short}_M_header.csv"
-
-    header = pd.read_csv(header).columns.values
-
-    df = pd.read_csv(target, names=header, parse_dates=True)
-    logger.info(f" {df.head().iloc[:, 0:8]}")
-
-    outname = target.name.replace(".dat", ".csv")
     outpath = Path("/home") / "data"
     outpath.mkdir(exist_ok=True)
 
     outfile = outpath / target.name.replace(".dat", ".csv")
+
+    df = parse_dat_file(target, header)
     df.to_csv(outfile, index=False)
 
     return str(outfile.name)
 
 
-# NOTE: Use PrefectResult for debugging (this will be
-#       available to prefect server ui), but switch to
-#       S3Result for larger data and better security
-#       later
+@task
+def prepare_df_for_s3(df: pd.DataFrame) -> str:
+    """Convert dataframe for s3 upload"""
+    csv_str = io.StringIO()
+    df.to_csv(csv_str)
+    return csv_str.getvalue()
+
 
 result = S3Result(
-        bucket="dataflow-ge-dailydata",
-
-        location="{task_name}.txt",
-
-        boto3_kwargs=dict(
-                aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-                aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
-                endpoint_url="https://s3.imk-ifu.kit.edu:8082",
-            )
-        )
+    bucket="dataflow-ge-dailydata",
+    location="{task_name}.pickle",
+    boto3_kwargs=s3_kwargs,
+    serializer=PickleSerializer(),
+)
 
 
-with Flow("TERENO Test Flow",
+storage = Docker(
+    registry_url="cwerner",
+    image_name="dataflow",
+    base_image="cwerner/dataflow:latest",
+    env_vars={
+        "PREFECT__LOGGING__LEVEL": "INFO",
+        "PREFECT__LOGGING__EXTRA_LOGGERS": "['great_expectations']",
+    },
+)
+
+
+with Flow(
+    "TERENO Test Flow",
     result=result,
-    storage = Docker(registry_url="cwerner", 
-                     image_name="dataflow",
-                     base_image="cwerner/dataflow:latest",
-                     env_vars={"PREFECT__LOGGING__LEVEL": "INFO",
-                               "PREFECT__LOGGING__EXTRA_LOGGERS": "['great_expectations']"},
-                     )) as flow:
+    storage=storage,
+) as flow:
 
     # parameters
     current_time = Parameter("current_time", default=None)
-    offset = Parameter('offset', default = 10)  # local 200
-    sitename = Parameter('sitename', default = 'fendt')
-    datalocation = Parameter('datalocation', default='/rawdata')    # local data
-
+    offset = Parameter("offset", default=10)
+    sitename = Parameter("sitename", default="fendt")
+    datalocation = Parameter("datalocation", default="/rawdata")
     expectation_suite_name = Parameter("expectation_suite_name", default="fendt.demo")
+    notification_email = Parameter(
+        "notification_email", default="freizeitbeauftragter@gmail.com"
+    )
 
-    targetfile = pull_rawfile(datalocation, sitename, current_time, offset)
+    targetfile = retrieve_and_parse_target_file(
+        datalocation, sitename, current_time, offset
+    )
 
     batch_kwargs = get_batch_kwargs("data__dir", targetfile)
 
-    validation_task(
+    validation = validation_task(
         batch_kwargs=batch_kwargs,
         expectation_suite_name=expectation_suite_name,
-        context_root_dir="/home/great_expectations"
+        context_root_dir="/home/great_expectations",
     )
+
+    # NOTE: this should depend on validation
+    data_str = prepare_df_for_s3(batch_kwargs["dataset"])
+    uploaded = upload_to_s3(data_str, targetfile, bucket="dataflow-lvl1")
 
 
 if __name__ == "__main__":
-    #flow.run(run_on_schedule=False)
-    #built_storage = flow.storage.build(push=False)
-    #print(built_storage.flows)
+    # flow.run(run_on_schedule=False)
+    # built_storage = flow.storage.build(push=False)
     flow.run_config = UniversalRun(labels=["dev"])
     flow.register(project_name="DataFlow")
