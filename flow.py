@@ -2,13 +2,12 @@ import prefect
 from prefect import Flow, task
 from prefect.core.parameter import Parameter
 from prefect.environments.storage import Docker
-from prefect.artifacts import create_markdown
 
 from prefect.engine.result.base import Result
 
 #from prefect.tasks.secrets import PrefectSecret, EnvVarSecret
 from prefect.run_configs import UniversalRun
-from prefect.engine.results import PrefectResult
+from prefect.engine.results import PrefectResult, S3Result
 from prefect.engine.serializers import PandasSerializer
 
 from prefect.tasks.great_expectations.checkpoints import RunGreatExpectationsValidation
@@ -21,8 +20,6 @@ import os
 import pendulum
 import great_expectations as ge
 from src.general import *
-
-
 
 
 # Define checkpoint task
@@ -39,18 +36,6 @@ def get_batch_kwargs(datasource_name, dataset):
 
     return {"dataset": dataset, "datasource": datasource_name}
 
-
-@task
-def report(filename, df=None):
-    md_content = f"# DataFlow status\n Looking for file: **{filename}**\n"
-
-    if df is not None:
-        sample_table = df.head().iloc[:, 0:8].to_markdown(index=False)
-        md_content += sample_table
-
-    create_markdown(md_content)
-
-    return None
 
 
 def create_filename(sitename, date):
@@ -107,39 +92,50 @@ def pull_rawfile(datalocation, sitename, current_time, offset):
 #       S3Result for larger data and better security
 #       later
 
+result = S3Result(
+        bucket="dataflow-ge-dailydata",
+
+        location="{task_name}.txt",
+
+        boto3_kwargs=dict(
+                aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+                aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+                endpoint_url="https://s3.imk-ifu.kit.edu:8082",
+            )
+        )
+
+
 with Flow("TERENO Test Flow",
-    result=PrefectResult(),
+    result=result,
     storage = Docker(registry_url="cwerner", 
                      image_name="dataflow",
                      base_image="cwerner/dataflow:latest",
+                     env_vars={"PREFECT__LOGGING__LEVEL": "INFO",
+                               "PREFECT__LOGGING__EXTRA_LOGGERS": "['great_expectations']"},
                      )) as flow:
 
-
-    # parameter
+    # parameters
     current_time = Parameter("current_time", default=None)
     offset = Parameter('offset', default = 10)  # local 200
     sitename = Parameter('sitename', default = 'fendt')
     datalocation = Parameter('datalocation', default='/rawdata')    # local data
 
-    expectation_suite_name = Parameter("expectation_suite_name", default="Fendt_test.warning")
+    expectation_suite_name = Parameter("expectation_suite_name", default="fendt.demo")
 
     targetfile = pull_rawfile(datalocation, sitename, current_time, offset)
 
     batch_kwargs = get_batch_kwargs("data__dir", targetfile)
 
     validation_task(
-            batch_kwargs=batch_kwargs,
-            expectation_suite_name=expectation_suite_name,
-            context_root_dir="/home/great_expectations"
-        )
-
-    #report(sitename, df)
+        batch_kwargs=batch_kwargs,
+        expectation_suite_name=expectation_suite_name,
+        context_root_dir="/home/great_expectations"
+    )
 
 
 if __name__ == "__main__":
     #flow.run(run_on_schedule=False)
     #built_storage = flow.storage.build(push=False)
     #print(built_storage.flows)
-    #print(built_storage.flow)
     flow.run_config = UniversalRun(labels=["dev"])
     flow.register(project_name="DataFlow")
