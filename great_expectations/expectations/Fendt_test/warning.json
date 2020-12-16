@@ -1,0 +1,595 @@
+{
+  "data_asset_type": "Dataset",
+  "expectation_suite_name": "Fendt_test.warning",
+  "expectations": [
+    {
+      "expectation_type": "expect_table_row_count_to_be_between",
+      "kwargs": {
+        "max_value": 1584,
+        "min_value": 1296
+      },
+      "meta": {
+        "BasicSuiteBuilderProfiler": {
+          "confidence": "very low"
+        }
+      }
+    },
+    {
+      "expectation_type": "expect_table_column_count_to_equal",
+      "kwargs": {
+        "value": 84
+      },
+      "meta": {
+        "BasicSuiteBuilderProfiler": {
+          "confidence": "very low"
+        }
+      }
+    },
+    {
+      "expectation_type": "expect_table_columns_to_match_ordered_list",
+      "kwargs": {
+        "column_list": [
+          "TIMESTAMP",
+          "BattV_Avg",
+          "PTemp_C_Avg",
+          "Wdmin_Min",
+          "Wdavg",
+          "Wdmax_Max",
+          "Wsmin_Min",
+          "Wsavg_Avg",
+          "Wsmax_Max",
+          "airtemp_Avg",
+          "relhumidity_Avg",
+          "airpressure_Avg",
+          "Ramount",
+          "Rduration_Avg",
+          "Rintensity_Avg",
+          "Hamount",
+          "Hduration_Avg",
+          "Hintensity_Avg",
+          "T107_2_West_Avg",
+          "T107_6_West_Avg",
+          "T107_12_West_Avg",
+          "T107_25_West_Avg",
+          "T107_35_West_Avg",
+          "T107_50_West_Avg",
+          "T107_2_Mitte_Avg",
+          "T107_6_Mitte_Avg",
+          "T107_12_Mitte_Avg",
+          "T107_25_Mitte_Avg",
+          "T107_35_Mitte_Avg",
+          "T107_50_Mitte_Avg",
+          "T107_2_Ost_Avg",
+          "T107_6_Ost_Avg",
+          "T107_12_Ost_Avg",
+          "T107_25_Ost_Avg",
+          "T107_35_Ost_Avg",
+          "T107_50_Ost_Avg",
+          "VWC_2_West_Avg",
+          "VWC_6_West_Avg",
+          "VWC_12_West_Avg",
+          "VWC_25_West_Avg",
+          "VWC_35_West_Avg",
+          "VWC_50_West_Avg",
+          "VWC_2_Mitte_Avg",
+          "VWC_6_Mitte_Avg",
+          "VWC_12_Mitte_Avg",
+          "VWC_25_Mitte_Avg",
+          "VWC_35_Mitte_Avg",
+          "VWC_50_Mitte_Avg",
+          "VWC_2_Ost_Avg",
+          "VWC_6_Ost_Avg",
+          "VWC_12_Ost_Avg",
+          "VWC_25_Ost_Avg",
+          "VWC_35_Ost_Avg",
+          "VWC_50_Ost_Avg",
+          "Snow_Depth",
+          "PAR_1_Avg",
+          "PAR_2_Avg",
+          "SR_Out_Avg",
+          "SR_In_Avg",
+          "IR_Out_Avg",
+          "IR_In_Avg",
+          "NR01_TC_Avg/CNR4TC_Avg",
+          "NR01_TK_Avg/CNR4TK_Avg",
+          "NetRs_Avg",
+          "NetRl_Avg",
+          "Albedo_Avg",
+          "OutTot_Avg",
+          "InTot_Avg",
+          "NetTot_Avg",
+          "IR_OutCo_Avg",
+          "IR_InCo_Avg",
+          "H_Flux_8_Ost_neu_Avg",
+          "H_Flux_9_West_neu_Avg",
+          "BP_mbar_Avg",
+          "IR_TempC_Avg",
+          "Total_Avg",
+          "Diffuse_Avg",
+          "Sun",
+          "H_Flux_sc_9_Ost_Avg",
+          "H_Flux_sc_8_fernerOst_Avg",
+          "H_Flux_sc_8_Mitte_Avg",
+          "shf_cal(1)",
+          "shf_cal(2)",
+          "shf_cal(3)"
+        ]
+      },
+      "meta": {
+        "BasicSuiteBuilderProfiler": {
+          "confidence": "very low"
+        }
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "airpressure_Avg"
+      },
+      "meta": {
+        "BasicSuiteBuilderProfiler": {
+          "confidence": "very low"
+        }
+      }
+    },
+    {
+      "expectation_type": "expect_column_distinct_values_to_be_in_set",
+      "kwargs": {
+        "column": "airpressure_Avg",
+        "value_set": [
+          946,
+          947,
+          948
+        ]
+      },
+      "meta": {
+        "BasicSuiteBuilderProfiler": {
+          "confidence": "very low"
+        }
+      }
+    },
+    {
+      "expectation_type": "expect_column_kl_divergence_to_be_less_than",
+      "kwargs": {
+        "column": "airpressure_Avg",
+        "partition_object": {
+          "values": [
+            946,
+            947,
+            948
+          ],
+          "weights": [
+            0.0006944444444444445,
+            0.36944444444444446,
+            0.6298611111111111
+          ]
+        },
+        "threshold": 0.6
+      },
+      "meta": {
+        "BasicSuiteBuilderProfiler": {
+          "confidence": "very low"
+        }
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "BattV_Avg"
+      },
+      "meta": {
+        "BasicSuiteBuilderProfiler": {
+          "confidence": "very low"
+        }
+      }
+    },
+    {
+      "expectation_type": "expect_column_min_to_be_between",
+      "kwargs": {
+        "column": "BattV_Avg",
+        "max_value": 13.97,
+        "min_value": 11.97
+      },
+      "meta": {
+        "BasicSuiteBuilderProfiler": {
+          "confidence": "very low"
+        }
+      }
+    },
+    {
+      "expectation_type": "expect_column_max_to_be_between",
+      "kwargs": {
+        "column": "BattV_Avg",
+        "max_value": 14.44,
+        "min_value": 12.44
+      },
+      "meta": {
+        "BasicSuiteBuilderProfiler": {
+          "confidence": "very low"
+        }
+      }
+    },
+    {
+      "expectation_type": "expect_column_mean_to_be_between",
+      "kwargs": {
+        "column": "BattV_Avg",
+        "max_value": 14.188993055555557,
+        "min_value": 12.188993055555557
+      },
+      "meta": {
+        "BasicSuiteBuilderProfiler": {
+          "confidence": "very low"
+        }
+      }
+    },
+    {
+      "expectation_type": "expect_column_median_to_be_between",
+      "kwargs": {
+        "column": "BattV_Avg",
+        "max_value": 14.18,
+        "min_value": 12.18
+      },
+      "meta": {
+        "BasicSuiteBuilderProfiler": {
+          "confidence": "very low"
+        }
+      }
+    },
+    {
+      "expectation_type": "expect_column_quantile_values_to_be_between",
+      "kwargs": {
+        "allow_relative_error": false,
+        "column": "BattV_Avg",
+        "quantile_ranges": {
+          "quantiles": [
+            0.05,
+            0.25,
+            0.5,
+            0.75,
+            0.95
+          ],
+          "value_ranges": [
+            [
+              11.99,
+              13.99
+            ],
+            [
+              12.02,
+              14.02
+            ],
+            [
+              12.18,
+              14.18
+            ],
+            [
+              12.34,
+              14.34
+            ],
+            [
+              12.42,
+              14.42
+            ]
+          ]
+        }
+      },
+      "meta": {
+        "BasicSuiteBuilderProfiler": {
+          "confidence": "very low"
+        }
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "TIMESTAMP"
+      },
+      "meta": {
+        "BasicSuiteBuilderProfiler": {
+          "confidence": "very low"
+        }
+      }
+    },
+    {
+      "expectation_type": "expect_column_value_lengths_to_be_between",
+      "kwargs": {
+        "column": "TIMESTAMP",
+        "min_value": 1
+      },
+      "meta": {
+        "BasicSuiteBuilderProfiler": {
+          "confidence": "very low"
+        }
+      }
+    }
+  ],
+  "meta": {
+    "BasicSuiteBuilderProfiler": {
+      "batch_kwargs": {
+        "data_asset_name": "Fen_M_19_200",
+        "datasource": "data__dir",
+        "path": "/Users/werner-ch/Documents/Repos/dataflow/data/nice/fendt/2019/Fen_M_19_200.csv",
+        "reader_method": "read_csv"
+      },
+      "created_at": 1607887662.106894,
+      "created_by": "BasicSuiteBuilderProfiler"
+    },
+    "citations": [
+      {
+        "batch_kwargs": {
+          "data_asset_name": "Fen_M_19_200",
+          "datasource": "data__dir",
+          "path": "/Users/werner-ch/Documents/Repos/dataflow/data/nice/fendt/2019/Fen_M_19_200.csv",
+          "reader_method": "read_csv"
+        },
+        "batch_markers": {
+          "ge_load_time": "20201213T192741.799856Z",
+          "pandas_data_fingerprint": "8788c7229bde4bbbdb776ca9b1c93278"
+        },
+        "batch_parameters": null,
+        "citation_date": "20201213T192742.126814Z",
+        "comment": "BasicSuiteBuilderProfiler added a citation based on the current batch."
+      }
+    ],
+    "columns": {
+      "Albedo_Avg": {
+        "description": ""
+      },
+      "BP_mbar_Avg": {
+        "description": ""
+      },
+      "BattV_Avg": {
+        "description": ""
+      },
+      "Diffuse_Avg": {
+        "description": ""
+      },
+      "H_Flux_8_Ost_neu_Avg": {
+        "description": ""
+      },
+      "H_Flux_9_West_neu_Avg": {
+        "description": ""
+      },
+      "H_Flux_sc_8_Mitte_Avg": {
+        "description": ""
+      },
+      "H_Flux_sc_8_fernerOst_Avg": {
+        "description": ""
+      },
+      "H_Flux_sc_9_Ost_Avg": {
+        "description": ""
+      },
+      "Hamount": {
+        "description": ""
+      },
+      "Hduration_Avg": {
+        "description": ""
+      },
+      "Hintensity_Avg": {
+        "description": ""
+      },
+      "IR_InCo_Avg": {
+        "description": ""
+      },
+      "IR_In_Avg": {
+        "description": ""
+      },
+      "IR_OutCo_Avg": {
+        "description": ""
+      },
+      "IR_Out_Avg": {
+        "description": ""
+      },
+      "IR_TempC_Avg": {
+        "description": ""
+      },
+      "InTot_Avg": {
+        "description": ""
+      },
+      "NR01_TC_Avg/CNR4TC_Avg": {
+        "description": ""
+      },
+      "NR01_TK_Avg/CNR4TK_Avg": {
+        "description": ""
+      },
+      "NetRl_Avg": {
+        "description": ""
+      },
+      "NetRs_Avg": {
+        "description": ""
+      },
+      "NetTot_Avg": {
+        "description": ""
+      },
+      "OutTot_Avg": {
+        "description": ""
+      },
+      "PAR_1_Avg": {
+        "description": ""
+      },
+      "PAR_2_Avg": {
+        "description": ""
+      },
+      "PTemp_C_Avg": {
+        "description": ""
+      },
+      "Ramount": {
+        "description": ""
+      },
+      "Rduration_Avg": {
+        "description": ""
+      },
+      "Rintensity_Avg": {
+        "description": ""
+      },
+      "SR_In_Avg": {
+        "description": ""
+      },
+      "SR_Out_Avg": {
+        "description": ""
+      },
+      "Snow_Depth": {
+        "description": ""
+      },
+      "Sun": {
+        "description": ""
+      },
+      "T107_12_Mitte_Avg": {
+        "description": ""
+      },
+      "T107_12_Ost_Avg": {
+        "description": ""
+      },
+      "T107_12_West_Avg": {
+        "description": ""
+      },
+      "T107_25_Mitte_Avg": {
+        "description": ""
+      },
+      "T107_25_Ost_Avg": {
+        "description": ""
+      },
+      "T107_25_West_Avg": {
+        "description": ""
+      },
+      "T107_2_Mitte_Avg": {
+        "description": ""
+      },
+      "T107_2_Ost_Avg": {
+        "description": ""
+      },
+      "T107_2_West_Avg": {
+        "description": ""
+      },
+      "T107_35_Mitte_Avg": {
+        "description": ""
+      },
+      "T107_35_Ost_Avg": {
+        "description": ""
+      },
+      "T107_35_West_Avg": {
+        "description": ""
+      },
+      "T107_50_Mitte_Avg": {
+        "description": ""
+      },
+      "T107_50_Ost_Avg": {
+        "description": ""
+      },
+      "T107_50_West_Avg": {
+        "description": ""
+      },
+      "T107_6_Mitte_Avg": {
+        "description": ""
+      },
+      "T107_6_Ost_Avg": {
+        "description": ""
+      },
+      "T107_6_West_Avg": {
+        "description": ""
+      },
+      "TIMESTAMP": {
+        "description": ""
+      },
+      "Total_Avg": {
+        "description": ""
+      },
+      "VWC_12_Mitte_Avg": {
+        "description": ""
+      },
+      "VWC_12_Ost_Avg": {
+        "description": ""
+      },
+      "VWC_12_West_Avg": {
+        "description": ""
+      },
+      "VWC_25_Mitte_Avg": {
+        "description": ""
+      },
+      "VWC_25_Ost_Avg": {
+        "description": ""
+      },
+      "VWC_25_West_Avg": {
+        "description": ""
+      },
+      "VWC_2_Mitte_Avg": {
+        "description": ""
+      },
+      "VWC_2_Ost_Avg": {
+        "description": ""
+      },
+      "VWC_2_West_Avg": {
+        "description": ""
+      },
+      "VWC_35_Mitte_Avg": {
+        "description": ""
+      },
+      "VWC_35_Ost_Avg": {
+        "description": ""
+      },
+      "VWC_35_West_Avg": {
+        "description": ""
+      },
+      "VWC_50_Mitte_Avg": {
+        "description": ""
+      },
+      "VWC_50_Ost_Avg": {
+        "description": ""
+      },
+      "VWC_50_West_Avg": {
+        "description": ""
+      },
+      "VWC_6_Mitte_Avg": {
+        "description": ""
+      },
+      "VWC_6_Ost_Avg": {
+        "description": ""
+      },
+      "VWC_6_West_Avg": {
+        "description": ""
+      },
+      "Wdavg": {
+        "description": ""
+      },
+      "Wdmax_Max": {
+        "description": ""
+      },
+      "Wdmin_Min": {
+        "description": ""
+      },
+      "Wsavg_Avg": {
+        "description": ""
+      },
+      "Wsmax_Max": {
+        "description": ""
+      },
+      "Wsmin_Min": {
+        "description": ""
+      },
+      "airpressure_Avg": {
+        "description": ""
+      },
+      "airtemp_Avg": {
+        "description": ""
+      },
+      "relhumidity_Avg": {
+        "description": ""
+      },
+      "shf_cal(1)": {
+        "description": ""
+      },
+      "shf_cal(2)": {
+        "description": ""
+      },
+      "shf_cal(3)": {
+        "description": ""
+      }
+    },
+    "great_expectations_version": "0.13.2",
+    "notes": {
+      "content": [
+        "#### This is an _example_ suite\n\n- This suite was made by quickly glancing at 1000 rows of your data.\n- This is **not a production suite**. It is meant to show examples of expectations.\n- Because this suite was auto-generated using a very basic profiler that does not know your data like you do, many of the expectations may not be meaningful.\n"
+      ],
+      "format": "markdown"
+    }
+  }
+}
