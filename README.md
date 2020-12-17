@@ -46,3 +46,29 @@ Potentially applied on level1/ level2 data.
 *Purpose:* More sophisticated checks (i.e. trend deviations, pulse event detection, etc.)
 
 
+### Prepare the s3 bucket for data docs
+
+```
+sgws s3api put-bucket-policy --bucket dataflow-ge-docs --policy file://website.json
+```
+
+The policy file:
+
+```
+{   
+    "Statement": [     
+        {       
+            "Effect": "Allow",
+            "Principal": "*",       
+            "Action": ["s3:GetObject", "s3:ListBucket"],
+            "Resource": [
+                "urn:sgws:s3:::dataflow-ge-docs",         
+                "urn:sgws:s3:::dataflow-ge-docs/*"       
+            ]     
+        }   
+    ] 
+}
+```
+
+The data docs should be present at https://s3.imk-ifu.kit.edu:8082/dataflow-ge-docs/index.html.
+

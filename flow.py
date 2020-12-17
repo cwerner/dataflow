@@ -18,10 +18,10 @@ from prefect.schedules.clocks import CronClock
 from prefect.tasks.aws.s3 import S3Upload
 from prefect.tasks.great_expectations.checkpoints import RunGreatExpectationsValidation
 from prefect.tasks.notifications.email_task import EmailTask
-from prefect.triggers import any_failed
+from prefect.triggers import any_failed, all_finished
 
 from src.helpers import s3_kwargs
-
+from src.tasks import S3UploadDir
 
 
 # TODO: match this with GE parsing
@@ -32,6 +32,7 @@ def parse_dat_file(target: Union[Path, str], header: Union[Path, str]) -> pd.Dat
 
 
 upload_to_s3 = S3Upload(boto_kwargs=s3_kwargs)
+upload_dir_to_s3 = S3UploadDir(boto_kwargs=s3_kwargs, trigger=all_finished)
 
 @task(trigger=any_failed)
 def email_on_failure(notification_email):
@@ -93,7 +94,7 @@ def get_batch_kwargs(datasource_name, dataset):
     return {"dataset": dataset, "datasource": datasource_name}
 
 
-@task(log_stdout=True)
+@task
 def retrieve_and_parse_target_file(
     location: str, site: str, current_time: Optional[str], offset: int = 0
 ):
@@ -122,6 +123,29 @@ def retrieve_and_parse_target_file(
 
     return str(outfile.name)
 
+
+# @task(log_stdout=True, trigger=all_finished)
+# def upload_folder_to_s3(source: Union[Path, str], bucket: str, prefix: str=""):
+#     """Upload content of local directory to a s3 bucket"""
+
+#     # "great_expectations/uncommitted/data_docs/local_site"
+    
+#     logger = prefect.context.get("logger")
+
+#     if isinstance(source, str):
+#         source = Path(source)
+#     source = source / "uncommitted" / "data_docs" / "local_site"
+
+#     for p in sorted(source.rglob("*")):
+#         if p.is_file():
+#             logger.info(f"Directory: {source}")
+
+#             relpath = p.parent
+#             filename = p.name
+
+#             # Invoke upload function
+#             task = S3Upload(bucket=bucket, boto_kwargs=s3_kwargs).run(open(p, 'rb').read(), key=str(relpath / filename))
+#     return None
 
 @task
 def prepare_df_for_s3(df: pd.DataFrame) -> str:
@@ -181,6 +205,10 @@ with Flow(
         context_root_dir="/home/great_expectations",
     )
     state = email_on_failure(notification_email, upstream_tasks=[validation])
+
+    uploaded = upload_dir_to_s3("/home/great_expectations/uncommitted/data_docs/local_site", 
+                                bucket="dataflow-ge-docs",
+                                upstream_tasks=[validation]) 
 
     df_flags = create_flags(validation)
 
