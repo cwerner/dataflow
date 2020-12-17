@@ -153,6 +153,7 @@ storage = Docker(
 with Flow(
     "TERENO Test Flow",
     result=result,
+    run_config=UniversalRun(labels=["dev"]),
     schedule=Schedule(clocks=[CronClock("0 6 * * *")]),
     storage=storage,
 ) as flow:
@@ -194,5 +195,4 @@ with Flow(
 if __name__ == "__main__":
     # flow.run(run_on_schedule=False)
     # built_storage = flow.storage.build(push=False)
-    flow.run_config = UniversalRun(labels=["dev"])
     flow.register(project_name="DataFlow")
