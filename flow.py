@@ -72,6 +72,13 @@ def create_filename(sitename: str, date: str) -> str:
     jday = date.timetuple().tm_yday
     return f"{sitename_short}_M_{year_short}_{jday}.dat"
 
+@task
+def create_flags(validation):
+    """Use validation results and create a flag dataframe"""
+    df_flags = pd.DataFrame()
+
+    return df_flags
+
 
 # Define checkpoint task
 validation_task = RunGreatExpectationsValidation(
@@ -174,10 +181,15 @@ with Flow(
     )
     state = email_on_failure(notification_email, upstream_tasks=[validation])
 
+    df_flags = create_flags(validation)
+
     # upload level 1 data to s3
     data_str = prepare_df_for_s3(batch_kwargs["dataset"])
     uploaded = upload_to_s3(data_str, targetfile, bucket="dataflow-lvl1")
 
+    # upload level 1 flags to s3
+    #flags_str = prepare_df_for_s3(df_flags)
+    #uploaded = upload_to_s3(data_str, targetfile, bucket="dataflow-lvl1")
 
 if __name__ == "__main__":
     # flow.run(run_on_schedule=False)
