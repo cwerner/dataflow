@@ -32,3 +32,17 @@ Or use the publish.sh script to achieve the same thing like so:
 ```
 ./publish.sh 0.1.0
 ```
+
+### Implemented Expectation suites
+
+In DataFlow multiple expectation suites will be evaluated on raw data.
+
+1. Warning  
+*Purpose:* Non-data specific checks (number of row, columns, consecutive time-stamps, number of NaN etc.)
+2. Basic  
+*Purpose:* Sensor/ Variable specific checks (mostly, min/ max range checks, number of consecutive constant values, etc.)
+3. Advanced   
+Potentially applied on level1/ level2 data.  
+*Purpose:* More sophisticated checks (i.e. trend deviations, pulse event detection, etc.)
+
+
