@@ -13,11 +13,15 @@ from prefect.engine.serializers import PickleSerializer
 from prefect.engine.state import Success
 from prefect.environments.storage import Docker
 from prefect.run_configs import UniversalRun
+from prefect.schedules import Schedule
+from prefect.schedules.clocks import CronClock
 from prefect.tasks.aws.s3 import S3Upload
 from prefect.tasks.great_expectations.checkpoints import RunGreatExpectationsValidation
 from prefect.tasks.notifications.email_task import EmailTask
+from prefect.triggers import any_failed
 
 from src.helpers import s3_kwargs
+
 
 
 # TODO: match this with GE parsing
@@ -29,28 +33,25 @@ def parse_dat_file(target: Union[Path, str], header: Union[Path, str]) -> pd.Dat
 
 upload_to_s3 = S3Upload(boto_kwargs=s3_kwargs)
 
-
-def email_on_failure(task, old_state, new_state):
+@task(trigger=any_failed)
+def email_on_failure(notification_email):
     """Send email on FAIL state"""
-    if new_state.is_failed():
-        notification_email = "freizeitbeauftragter@gmail.com"
-        # prefect.context.parameters.get("notification_email")
-        flow_name = prefect.context.flow_name
 
-        # TODO: Check how to create a custom prefect email
-        task = EmailTask(
-            subject="Prefect alert: {} {}".format(flow_name, new_state),
-            msg=html.escape(
-                "{} GreatExpectation Validation failed\n\nTask: {}; New State: {}".format(
-                    flow_name, task, new_state
-                )
+    flow_name = prefect.context.flow_name
+
+    # TODO: Check how to create a custom prefect email
+    task = EmailTask(
+        subject=f"Prefect alert: {flow_name}",
+        msg=html.escape(
+            f"{flow_name} GreatExpectation Validation failed."
             ),
-            email_from="christian.werner@kit.edu",
-            email_to=notification_email,
-            smtp_server="smtp.kit.edu",
-            smtp_port=25,
-            smtp_type="STARTTLS",
-        ).run()
+        email_from="christian.werner@kit.edu",
+        email_to=notification_email,
+        smtp_server="smtp.kit.edu",
+        smtp_port=25,
+        smtp_type="STARTTLS",
+    ).run()
+    return task
 
 
 def flip_fail_to_success(task, old_state, new_state):
@@ -74,7 +75,7 @@ def create_filename(sitename: str, date: str) -> str:
 
 # Define checkpoint task
 validation_task = RunGreatExpectationsValidation(
-    state_handlers=[email_on_failure, flip_fail_to_success]
+#    state_handlers=[flip_fail_to_success]
 )
 
 
@@ -145,6 +146,7 @@ storage = Docker(
 with Flow(
     "TERENO Test Flow",
     result=result,
+    schedule=Schedule(clocks=[CronClock("0 6 * * *")]),
     storage=storage,
 ) as flow:
 
@@ -164,13 +166,15 @@ with Flow(
 
     batch_kwargs = get_batch_kwargs("data__dir", targetfile)
 
+    # validate based on ge expectations
     validation = validation_task(
         batch_kwargs=batch_kwargs,
         expectation_suite_name=expectation_suite_name,
         context_root_dir="/home/great_expectations",
     )
+    state = email_on_failure(notification_email, upstream_tasks=[validation])
 
-    # NOTE: this should depend on validation
+    # upload level 1 data to s3
     data_str = prepare_df_for_s3(batch_kwargs["dataset"])
     uploaded = upload_to_s3(data_str, targetfile, bucket="dataflow-lvl1")
 
