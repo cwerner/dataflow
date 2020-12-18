@@ -124,35 +124,35 @@ def retrieve_and_parse_target_file(
     return str(outfile.name)
 
 
-# @task(log_stdout=True, trigger=all_finished)
-# def upload_folder_to_s3(source: Union[Path, str], bucket: str, prefix: str=""):
-#     """Upload content of local directory to a s3 bucket"""
-
-#     # "great_expectations/uncommitted/data_docs/local_site"
-    
-#     logger = prefect.context.get("logger")
-
-#     if isinstance(source, str):
-#         source = Path(source)
-#     source = source / "uncommitted" / "data_docs" / "local_site"
-
-#     for p in sorted(source.rglob("*")):
-#         if p.is_file():
-#             logger.info(f"Directory: {source}")
-
-#             relpath = p.parent
-#             filename = p.name
-
-#             # Invoke upload function
-#             task = S3Upload(bucket=bucket, boto_kwargs=s3_kwargs).run(open(p, 'rb').read(), key=str(relpath / filename))
-#     return None
-
 @task
 def prepare_df_for_s3(df: pd.DataFrame) -> str:
     """Convert dataframe for s3 upload"""
     csv_str = io.StringIO()
     df.to_csv(csv_str)
     return csv_str.getvalue()
+
+@task(log_stdout=True, trigger=all_finished)
+def show_validation(results):
+    logger = prefect.context.get("logger")
+    logger.info(f"{type(results)}")
+    logger.info(f"{dir(results)}")
+    logger.info(f"{[res for res in results['run_results']]}")
+
+    key = list(results["run_results"].keys())[0]
+
+    valresult = results["run_results"][key]['validation_result']
+    for results in valresult.results:
+        # only check column exceptions
+        if 'column' in results.expectation_config.kwargs:
+            col = results.expectation_config.kwargs['column']
+            exp = results.expectation_config["expectation_type"]
+
+            if "unexpected_index_list" in results.result:
+                logger.warning(f"{col} {exp} :: {results.result}")
+                
+            logger.info(f"{col} {exp} :: {results.result}")
+
+    return results
 
 
 result = S3Result(
@@ -199,18 +199,21 @@ with Flow(
     batch_kwargs = get_batch_kwargs("data__dir", targetfile)
 
     # validate based on ge expectations
-    validation = validation_task(
+    results = validation_task(
         batch_kwargs=batch_kwargs,
         expectation_suite_name=expectation_suite_name,
         context_root_dir="/home/great_expectations",
     )
-    state = email_on_failure(notification_email, upstream_tasks=[validation])
+
+    results = show_validation(results)
+
+    state = email_on_failure(notification_email, upstream_tasks=[results])
 
     uploaded = upload_dir_to_s3("/home/great_expectations/uncommitted/data_docs/local_site", 
                                 bucket="dataflow-ge-docs",
-                                upstream_tasks=[validation]) 
+                                upstream_tasks=[results]) 
 
-    df_flags = create_flags(validation)
+    df_flags = create_flags(results)
 
     # upload level 1 data to s3
     data_str = prepare_df_for_s3(batch_kwargs["dataset"])

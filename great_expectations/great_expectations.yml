@@ -61,8 +61,8 @@ validation_operators:
     # To learn how to configure sending Slack notifications during evaluation
     # (and other customizations), read: https://docs.greatexpectations.io/en/latest/autoapi/great_expectations/validation_operators/index.html#great_expectations.validation_operators.ActionListValidationOperator
     class_name: ActionListValidationOperator
-    # TODO: default to complete result returns
     result_format: COMPLETE
+    # TODO: default to complete result returns
     action_list:
     - name: store_validation_result
       action:

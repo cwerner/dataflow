@@ -391,6 +391,16 @@
       "meta": {}
     },
     {
+      "expectation_type": "expect_column_values_to_be_between",
+      "kwargs": {
+        "column": "airpressure_Avg",
+        "result_format": {"result_format": "SUMMARY"},
+        "min_value": 959,
+        "max_value": 961
+      },
+      "meta": {}
+    },
+    {
       "expectation_type": "expect_column_kl_divergence_to_be_less_than",
       "kwargs": {
         "column": "airpressure_Avg",
