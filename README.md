@@ -1,5 +1,15 @@
 # dataflow
-Demo data pipeline for TERENO and other station data
+
+[![Prefect flow](https://img.shields.io/badge/etl-%20prefect-blue)](https://github.com/prefectHQ/prefect)
+![Docker Image Version (latest semver)](https://img.shields.io/docker/v/cwerner/dataflow?sort=semver)
+![Docker Image Pulls](https://img.shields.io/docker/pulls/cwerner/dataflow)
+
+![](https://img.shields.io/docker/pulls/cwerner/dataflow/kong.svg)
+
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+![Imports: isort](https://img.shields.io/badge/imports-isort-orange)
+
+Demo data pipeline for [TERENO](https://www.tereno.net) and other station data.
 
 | ![dataflow](assets/dataflow.png) | 
 |:--:| 
