@@ -4,14 +4,17 @@ from pathlib import Path
 from typing import Optional, Union
 
 import pandas as pd
+import numpy as np
+
 import pendulum
 import prefect
-from prefect import Flow, task
+from prefect import Flow, task, unmapped
 from prefect.core.parameter import Parameter
 from prefect.engine.results import S3Result
 from prefect.engine.serializers import PickleSerializer
 from prefect.engine.state import Success
 from prefect.environments.storage import Docker
+from prefect.executors import DaskExecutor
 from prefect.run_configs import UniversalRun
 from prefect.schedules import Schedule
 from prefect.schedules.clocks import CronClock
@@ -34,21 +37,21 @@ def parse_dat_file(target: Union[Path, str], header: Union[Path, str]) -> pd.Dat
 upload_to_s3 = S3Upload(boto_kwargs=s3_kwargs)
 upload_dir_to_s3 = S3UploadDir(boto_kwargs=s3_kwargs, trigger=all_finished)
 
+
 @task(trigger=any_failed)
 def email_on_failure(notification_email):
     """Send email on FAIL state"""
 
     flow_name = prefect.context.flow_name
 
-    # TODO: Check how to create a custom prefect email
+    # TODO: Check how to create a custom prefect email/ email as a service
+    #       (use: prefect.service@kit.edu)
     task = EmailTask(
         subject=f"Prefect alert: {flow_name}",
-        msg=html.escape(
-            f"{flow_name} GreatExpectation Validation failed."
-            ),
+        msg=html.escape(f"{flow_name} GreatExpectation Validation failed."),
         email_from="christian.werner@kit.edu",
         email_to=notification_email,
-        smtp_server="smtp.kit.edu",
+        smtp_server="smtp.kit.edu", 
         smtp_port=25,
         smtp_type="STARTTLS",
     ).run()
@@ -73,17 +76,28 @@ def create_filename(sitename: str, date: str) -> str:
     jday = date.timetuple().tm_yday
     return f"{sitename_short}_M_{year_short}_{jday}.dat"
 
+
 @task
-def create_flags(validation):
+def create_flags(df: pd.DataFrame, validation) -> pd.DataFrame:
     """Use validation results and create a flag dataframe"""
-    df_flags = pd.DataFrame()
+    df_flags = df[["TIMESTAMP"]]
+    rows, cols = df.shape
+    flags = np.ones((rows, cols - 1), dtype=int)
+
+    df_flags = pd.concat(
+        [
+            df_flags,
+            pd.DataFrame(data=flags, index=df.index, columns=df.columns.values[1:]),
+        ],
+        axis=1,
+    )
 
     return df_flags
 
 
 # Define checkpoint task
 validation_task = RunGreatExpectationsValidation(
-#    state_handlers=[flip_fail_to_success]
+    #    state_handlers=[flip_fail_to_success]
 )
 
 
@@ -125,11 +139,17 @@ def retrieve_and_parse_target_file(
 
 
 @task
+def derive_flags_filename(filename: str):
+    return filename.replace(".csv", ".csv.flags")
+
+
+@task
 def prepare_df_for_s3(df: pd.DataFrame) -> str:
     """Convert dataframe for s3 upload"""
     csv_str = io.StringIO()
-    df.to_csv(csv_str)
+    df.to_csv(csv_str, index=False)
     return csv_str.getvalue()
+
 
 @task(log_stdout=True, trigger=all_finished)
 def show_validation(results):
@@ -140,16 +160,16 @@ def show_validation(results):
 
     key = list(results["run_results"].keys())[0]
 
-    valresult = results["run_results"][key]['validation_result']
+    valresult = results["run_results"][key]["validation_result"]
     for results in valresult.results:
         # only check column exceptions
-        if 'column' in results.expectation_config.kwargs:
-            col = results.expectation_config.kwargs['column']
+        if "column" in results.expectation_config.kwargs:
+            col = results.expectation_config.kwargs["column"]
             exp = results.expectation_config["expectation_type"]
 
             if "unexpected_index_list" in results.result:
                 logger.warning(f"{col} {exp} :: {results.result}")
-                
+
             logger.info(f"{col} {exp} :: {results.result}")
 
     return results
@@ -176,6 +196,7 @@ storage = Docker(
 
 with Flow(
     "TERENO Test Flow",
+    executor=DaskExecutor(),
     result=result,
     run_config=UniversalRun(labels=["dev"]),
     schedule=Schedule(clocks=[CronClock("0 6 * * *")]),
@@ -196,6 +217,8 @@ with Flow(
         datalocation, sitename, current_time, offset
     )
 
+    targetfile_flags = derive_flags_filename(targetfile)
+
     batch_kwargs = get_batch_kwargs("data__dir", targetfile)
 
     # validate based on ge expectations
@@ -204,24 +227,24 @@ with Flow(
         expectation_suite_name=expectation_suite_name,
         context_root_dir="/home/great_expectations",
     )
+    state = email_on_failure(notification_email, upstream_tasks=[results])
 
     results = show_validation(results)
 
-    state = email_on_failure(notification_email, upstream_tasks=[results])
+    uploaded = upload_dir_to_s3(
+        "/home/great_expectations/uncommitted/data_docs/local_site",
+        bucket="dataflow-ge-docs",
+        upstream_tasks=[results],
+    )
 
-    uploaded = upload_dir_to_s3("/home/great_expectations/uncommitted/data_docs/local_site", 
-                                bucket="dataflow-ge-docs",
-                                upstream_tasks=[results]) 
+    df_flags = create_flags(batch_kwargs["dataset"], results)
 
-    df_flags = create_flags(results)
+    data_strs = prepare_df_for_s3.map([batch_kwargs["dataset"], df_flags])
 
-    # upload level 1 data to s3
-    data_str = prepare_df_for_s3(batch_kwargs["dataset"])
-    uploaded = upload_to_s3(data_str, targetfile, bucket="dataflow-lvl1")
+    uploaded = upload_to_s3.map(
+        data_strs, [targetfile, targetfile_flags], bucket=unmapped("dataflow-lvl1")
+    )
 
-    # upload level 1 flags to s3
-    #flags_str = prepare_df_for_s3(df_flags)
-    #uploaded = upload_to_s3(data_str, targetfile, bucket="dataflow-lvl1")
 
 if __name__ == "__main__":
     # flow.run(run_on_schedule=False)
